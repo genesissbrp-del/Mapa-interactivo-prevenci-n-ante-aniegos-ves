@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Alerta VES — Mapa de lluvias e inundaciones</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#090b0a;color:#f4f6f3;font-family:Inter,system-ui,Arial,sans-serif}
+.app{max-width:980px;margin:auto;padding:18px}.hero{padding:8px 3px 15px}
+.ey{color:#5fe0ad;font-weight:800;font-size:11px;letter-spacing:1.6px}.hero h1{font-size:30px;margin:7px 0 4px}.sub{color:#aeb6b0;font-size:14px;line-height:1.45}
+.live{display:inline-flex;gap:8px;align-items:center;margin-top:11px;font-size:12px}.pulse{width:9px;height:9px;background:#20b77e;border-radius:50%;box-shadow:0 0 0 6px #20b77e22}
+.panel{background:#151816;border:1px solid #2b302d;border-radius:20px;padding:14px;margin-top:12px}
+.search{display:flex;gap:8px}.search input{flex:1;background:#0e110f;color:#fff;border:1px solid #3a403b;border-radius:12px;padding:13px;font-size:15px}.btn{background:#2b3831;color:#fff;border:0;border-radius:12px;padding:0 15px;font-weight:700;cursor:pointer}
+.hint{font-size:11px;color:#7f8781;margin-top:7px}.filters{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.filter{background:#101311;color:#eee;border:1px solid #343a36;border-radius:12px;padding:10px 13px;cursor:pointer}.filter.active{background:#19352b;border-color:#63cda3}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}.r{background:#ef5350}.a{background:#f5a623}.s{background:#20a67a}
+#map{height:500px;border-radius:16px;overflow:hidden;margin-top:13px;border:1px solid #2c312e}
+.info{font-size:12px;color:#858d87;margin-top:8px}
+.detail{display:none;background:#181c19;border:1px solid #303631;border-radius:20px;padding:17px;margin-top:12px}.row{display:flex;justify-content:space-between;gap:12px}.place{font-size:19px;font-weight:800}.time{font-size:12px;color:#909891;margin-top:5px}.badge{padding:6px 9px;border-radius:999px;font-size:11px;height:max-content}.affected{background:#46191b;color:#ff9b98}.alert{background:#453213;color:#ffd06a}.safe{background:#123b2d;color:#75dfb4}
+.action{background:#07355f;border:1px solid #14538b;border-radius:14px;padding:14px;margin:14px 0;color:#b9ddff;line-height:1.5}.section{font-size:10px;color:#9ca59e;font-weight:800;letter-spacing:1px;margin-top:14px}.detail ul{margin:6px 0 0 18px;padding:0}.detail li{margin:7px 0;line-height:1.4}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.card{background:#151816;border:1px solid #2d332f;border-radius:14px;padding:12px}.card b{font-size:21px}.card span{display:block;color:#929b94;font-size:11px;margin-top:3px}
+.notice{font-size:11px;color:#aeb5af;line-height:1.5;margin-top:12px}
+.guides{margin-top:13px;display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.guide{border-radius:15px;padding:13px;border:1px solid #303631;background:#111411;line-height:1.4}.guide h3{font-size:13px;margin:0 0 7px}.guide p{font-size:11px;color:#c2c8c3;margin:0}.guide.red{border-color:#713033;background:#241416}.guide.red h3{color:#ff8582}.guide.yellow{border-color:#705521;background:#211c11}.guide.yellow h3{color:#ffd16a}.guide.green{border-color:#275f4b;background:#111f19}.guide.green h3{color:#72ddb2}.legend-title{font-size:11px;color:#9ca59e;font-weight:800;letter-spacing:1px;margin-bottom:9px}
+@media(max-width:600px){.guides{grid-template-columns:1fr}.guide{padding:12px}}
+
+.emergency{margin-top:13px}.emergency-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.emergency-card{background:#111411;border:1px solid #303631;border-radius:15px;padding:13px}.emergency-card .ec-top{display:flex;align-items:center;gap:9px}.ec-icon{font-size:23px}.emergency-card h3{font-size:14px;margin:0}.emergency-card p{font-size:11px;color:#aeb6b0;margin:6px 0 9px;line-height:1.4}.phone{display:inline-block;text-decoration:none;background:#25362e;color:#fff;border:1px solid #3d5c4d;border-radius:10px;padding:8px 10px;font-weight:800;font-size:12px}.phone.urgent{background:#492022;border-color:#74383b}.emergency-note{font-size:10px;color:#818a83;margin-top:9px;line-height:1.45}
+@media(max-width:600px){.emergency-grid{grid-template-columns:1fr}}
+
+.leaflet-container{background:#111}.leaflet-control-geocoder{display:none}
+@media(max-width:600px){.app{padding:11px}.hero h1{font-size:25px}#map{height:440px}.cards{grid-template-columns:1fr 1fr 1fr}.place{font-size:17px}}
+</style>
+</head>
+<body>
+<div class="app">
+<section class="hero">
+<div class="ey">VILLA EL SALVADOR · MAPA INTERACTIVO</div>
+<h1>¿Cómo está tu zona ahora?</h1>
+<div class="sub">Busca una avenida, sector, grupo o punto de Villa El Salvador. Toca el mapa para consultar la zona.</div>
+<div class="live"><span class="pulse"></span><b>Mapa conectado</b> · actualización meteorológica en vivo</div>
+</section>
+
+<section class="panel">
+<div class="search">
+<input id="search" placeholder="Ej.: Micaela Bastidas, Sector 1, Pastor Sevilla…">
+<button class="btn" id="buscar">Buscar</button>
+</div>
+<div class="hint">La búsqueda utiliza datos de mapas abiertos. Para reportes de aniego se mostrarán únicamente fuentes/datos que estén disponibles.</div>
+<div class="filters">
+<button class="filter active" data-f="all">Todas</button>
+<button class="filter" data-f="affected"><i class="dot r"></i>Afectado</button>
+<button class="filter" data-f="alert"><i class="dot a"></i>En alerta</button>
+<button class="filter" data-f="safe"><i class="dot s"></i>Sin novedad</button>
+</div>
+</section>
+
+<section class="panel">
+<div class="legend-title">¿QUÉ HACER SEGÚN EL COLOR?</div>
+<div class="guides">
+  <div class="guide red"><h3>🔴 ROJA · AFECTADO</h3><p><b>Evita la zona.</b> No cruces calles inundadas ni corrientes de agua. Si el agua entra a casa, corta la energía desde la llave general y dirígete a un lugar seguro. Sigue a las autoridades.</p></div>
+  <div class="guide yellow"><h3>🟡 AMARILLA · EN ALERTA</h3><p><b>Precaución.</b> Evita zonas bajas y puntos donde se acumule agua, reduce la velocidad si transitas y revisa el mapa antes de salir. Mantente atento a cambios.</p></div>
+  <div class="guide green"><h3>🟢 VERDE · SIN NOVEDAD</h3><p><b>Transita con normalidad y precaución.</b> No hay reporte de aniego en el punto, pero verifica el mapa y el estado de la lluvia antes de desplazarte.</p></div>
+</div>
+</section>
+
+<section class="panel">
+<div style="font-weight:800">Mapa real de Villa El Salvador</div>
+<div id="weather" class="sub" style="margin-top:4px">Consultando condiciones meteorológicas…</div>
+<div id="map"></div>
+<div class="info">Los puntos de ejemplo sirven para demostrar la interacción. En una versión pública final, los reportes deben alimentarse desde una fuente oficial o desde reportes comunitarios verificados.</div>
+</section>
+
+<div class="cards">
+<div class="card"><b id="rain">—</b><span>Temperatura</span></div>
+<div class="card"><b id="wind">—</b><span>Viento</span></div>
+<div class="card"><b id="precip">—</b><span>Precipitación</span></div>
+</div>
+
+<section class="panel emergency">
+<div class="legend-title">CONTACTOS DE EMERGENCIA</div>
+<div class="sub" style="margin-bottom:10px">Si una situación pone en riesgo tu vida o la de otra persona, llama al servicio correspondiente. Los botones permiten llamar directamente desde el celular.</div>
+<div class="emergency-grid">
+  <div class="emergency-card"><div class="ec-top"><span class="ec-icon">👮</span><h3>Policía Nacional</h3></div><p>Accidentes, rescate, seguridad y situaciones de riesgo.</p><a class="phone urgent" href="tel:105">📞 Llamar 105</a></div>
+  <div class="emergency-card"><div class="ec-top"><span class="ec-icon">🚒</span><h3>Bomberos</h3></div><p>Rescate, inundaciones, emergencias médicas e incendios.</p><a class="phone urgent" href="tel:116">📞 Llamar 116</a></div>
+  <div class="emergency-card"><div class="ec-top"><span class="ec-icon">🛟</span><h3>Defensa Civil</h3></div><p>Orientación y atención relacionada con emergencias y desastres.</p><a class="phone" href="tel:115">📞 Llamar 115</a></div>
+  <div class="emergency-card"><div class="ec-top"><span class="ec-icon">🚑</span><h3>SAMU</h3></div><p>Atención médica móvil de urgencia en Lima.</p><a class="phone urgent" href="tel:106">📞 Llamar 106</a></div>
+  <div class="emergency-card"><div class="ec-top"><span class="ec-icon">🛡️</span><h3>Serenazgo VES</h3></div><p>Central de monitoreo y seguridad ciudadana del distrito.</p><a class="phone" href="tel:015100200">📞 01 510-0200</a></div>
+  <div class="emergency-card"><div class="ec-top"><span class="ec-icon">🏥</span><h3>Ambulancia municipal VES</h3></div><p>Atención prehospitalaria y traslado especializado para residentes de VES.</p><a class="phone urgent" href="tel:959235344">📞 959 235 344</a></div>
+  <div class="emergency-card"><div class="ec-top"><span class="ec-icon">🏥</span><h3>Hospital de Emergencias VES</h3></div><p>Atención hospitalaria de emergencia en Villa El Salvador.</p><a class="phone" href="tel:016409875">📞 01 640-9875</a></div>
+  <div class="emergency-card"><div class="ec-top"><span class="ec-icon">🚓</span><h3>Comisaría VES</h3></div><p>Contacto local de la Policía Nacional en el distrito.</p><a class="phone" href="tel:012873804">📞 01 287-3804</a></div>
+</div>
+<div class="emergency-note"><b>Importante:</b> en una emergencia grave prioriza 105, 116, 106 o 115 según la situación. Los teléfonos locales corresponden a información publicada por la Municipalidad de Villa El Salvador.</div>
+</section>
+
+<div id="detail" class="detail"></div>
+
+<div class="panel notice">
+<b>Importante:</b> “Tiempo real” para inundaciones requiere una fuente de datos que publique reportes actualizados. INDECI dispone de servicios cartográficos con capas de peligro de inundación y registros de emergencias; estos pueden integrarse como capas del mapa.
+</div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const VES=[-12.213,-76.943];
+const map=L.map('map').setView(VES,13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map);
+
+const data=[
+{id:'s1',name:'Sector 1, Grupo 1',lat:-12.2223,lon:-76.9388,status:'affected',label:'Afectado',source:'Ejemplo de prototipo',action:'Evita la zona. No cruces calles inundadas ni corrientes de agua. Si el agua entra a la vivienda, corta la energía desde la llave general y dirígete a un lugar seguro.'},
+{id:'mb',name:'Av. Micaela Bastidas con Av. Los Ángeles',lat:-12.2112,lon:-76.9475,status:'alert',label:'En alerta',source:'Ejemplo de prototipo',action:'Mantente en alerta. Evita las partes bajas y puntos donde se acumule agua. Revisa nuevamente el mapa antes de salir.'},
+{id:'ang',name:'Av. Los Ángeles',lat:-12.2056,lon:-76.9304,status:'alert',label:'En alerta',source:'Ejemplo de prototipo',action:'Mantente en alerta. Reduce la velocidad, evita acumulaciones de agua y revisa nuevamente el mapa antes de salir.'},
+{id:'ps',name:'Av. Pastor Sevilla',lat:-12.2194,lon:-76.9533,status:'safe',label:'Sin novedad',source:'Ejemplo de prototipo',action:'Puedes transitar con normalidad y precaución. No hay reporte de aniego en este punto, pero revisa nuevamente el mapa si aumenta la lluvia.'}
+];
+
+const colors={affected:'#ef5350',alert:'#f5a623',safe:'#20a67a'};
+let markers=[],filter='all',selected=null;
+
+function show(d){
+ selected=d;
+ const box=document.getElementById('detail');box.style.display='block';
+ box.innerHTML=`<div class="row"><div><div class="place">${d.name}</div><div class="time">Fuente: ${d.source}</div></div><span class="badge ${d.status}">${d.label}</span></div>
+ <div class="action"><b>QUÉ HAGO AHORA</b><br>${d.action}</div>
+ <div class="section">RECOMENDACIÓN SEGÚN EL NIVEL</div><ul>${d.status==='affected'
+ ? '<li><b>Zona roja:</b> evita el punto y busca una ruta alternativa.</li><li>No cruces agua acumulada ni corrientes, aunque parezcan poco profundas.</li><li>Si existe riesgo en tu vivienda, corta la electricidad y dirígete a un lugar seguro.</li>'
+ : d.status==='alert'
+ ? '<li><b>Zona amarilla:</b> circula con precaución y evita las partes bajas.</li><li>Reduce la velocidad y no te acerques a acumulaciones de agua.</li><li>Revisa el mapa y las actualizaciones antes de salir.</li>'
+ : '<li><b>Zona verde:</b> no hay reporte de aniego en este punto.</li><li>Transita con normalidad, pero mantén precaución si continúa la lluvia.</li><li>Vuelve a consultar el mapa si cambian las condiciones.</li>'}</ul>`;
+ box.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function makeMarker(d){
+ const m=L.circleMarker([d.lat,d.lon],{radius:11,fillColor:colors[d.status],color:'#0a0c0b',weight:3,fillOpacity:1});
+ m.bindTooltip(d.name,{direction:'top'});m.on('click',()=>show(d));m.addTo(map);return m;
+}
+data.forEach(d=>markers.push({d,m:makeMarker(d)}));
+
+function apply(){
+ const q=document.getElementById('search').value.trim().toLowerCase();
+ markers.forEach(x=>{
+   const okF=filter==='all'||x.d.status===filter;
+   const okQ=!q||x.d.name.toLowerCase().includes(q);
+   if(okF&&okQ){if(!map.hasLayer(x.m))x.m.addTo(map)}else if(map.hasLayer(x.m))map.removeLayer(x.m);
+ });
+}
+document.querySelectorAll('.filter').forEach(b=>b.onclick=()=>{filter=b.dataset.f;document.querySelectorAll('.filter').forEach(x=>x.classList.remove('active'));b.classList.add('active');apply()});
+document.getElementById('buscar').onclick=geocode;
+document.getElementById('search').addEventListener('keydown',e=>{if(e.key==='Enter')geocode()});
+async function geocode(){
+ const q=document.getElementById('search').value.trim();if(!q)return;
+ const query=encodeURIComponent(q+', Villa El Salvador, Lima, Peru');
+ try{
+   const res=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&q='+query,{headers:{'Accept-Language':'es'}});
+   const arr=await res.json();
+   if(!arr.length){alert('No encontramos esa zona. Prueba con otra avenida, sector o grupo.');return}
+   const r=arr[0];map.setView([+r.lat,+r.lon],16);
+   L.popup().setLatLng([+r.lat,+r.lon]).setContent('<b>'+r.display_name.split(',').slice(0,3).join(', ')+'</b><br><small>Ubicación encontrada en el mapa.</small>').openOn(map);
+ }catch(e){alert('No se pudo realizar la búsqueda. Comprueba tu conexión a Internet.')}
+}
+async function weather(){
+ try{
+  const u='https://api.open-meteo.com/v1/forecast?latitude='+VES[0]+'&longitude='+VES[1]+'&current=temperature_2m,precipitation,wind_speed_10m,rain&timezone=America%2FLima';
+  const r=await fetch(u);const j=await r.json();const c=j.current;
+  document.getElementById('weather').textContent=`Ahora: ${c.temperature_2m} °C · lluvia: ${c.rain} mm · precipitación: ${c.precipitation} mm · viento: ${c.wind_speed_10m} km/h`;
+  document.getElementById('rain').textContent=c.temperature_2m+' °C';document.getElementById('wind').textContent=c.wind_speed_10m+' km/h';document.getElementById('precip').textContent=c.precipitation+' mm';
+ }catch(e){document.getElementById('weather').textContent='No se pudo actualizar el tiempo. Revisa tu conexión.'}
+}
+weather();setInterval(weather,600000);
+</script>
+</body>
+</html>
